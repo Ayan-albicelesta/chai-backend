@@ -1,17 +1,22 @@
 // require('dotenv').config({path: './env'})
 
 import dotenv from "dotenv"; 
-
- 
+dotenv.config()
 
 import connectDB from "./db/db.js";
 
-dotenv.config({
-    path:'./env'
-})
+import app from "./app.js";
 
 
 connectDB()
+.then(()=>{
+  app.listen(process.env.PORT || 8000,()=>{
+    console.log(`server is listening on port ${process.env.PORT}`);
+  })
+})
+.catch((err)=>{
+  console.log("Databse conection error ",err);
+})
 
 
 
@@ -41,7 +46,6 @@ const app=express()
     } catch (error) {
         console.error("ERROR",error)
         throw error
-    }
-    
+    }  
 })();
 */
