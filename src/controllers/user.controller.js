@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import {User} from "../models/user.models.js"
+import User from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -12,7 +12,7 @@ export const resisterUser= asyncHandler( async(req,res)=>{
         throw new ApiError(400,"All fields require")
     }
 
-    //if user exists
+    //if user exists 
     const existedUser=await User.findOne({
         $or: [{username},{email}]
     })
@@ -20,20 +20,27 @@ export const resisterUser= asyncHandler( async(req,res)=>{
         throw new ApiError(409,"User with email or username already exists")
     }
 
-    //check if avatar given by user
-    console.log(req.files);
+    //check if avatarfilepath from localdisk is given by user
+    // console.log(req.files);
     const avatarLocalPath= req.files?.avatar[0].path
     const coverImageLocalPath=req.files?.coverImage[0].path
 
+    
+    if(!coverImageLocalPath){
+
+    }
+
     if(!avatarLocalPath){
-        throw new ApiError(400,"Avatar file is required")
+        throw new ApiError(400,"Avatar file path is required")
     }
 
     //if avatar coverImage given upload to clodinary
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
-    console.log(avatar);
+    console.log("avatarLocalPath ", avatarLocalPath);
+    const avatar = await uploadOnCloudinary(avatarLocalPath)//this will give the the information after uploading on cloudinary
+    console.log("avatar ", avatar);
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    console.log("coverImage ",coverImage);
 
     //check if avatar is created
     if(!avatar){
@@ -48,11 +55,12 @@ export const resisterUser= asyncHandler( async(req,res)=>{
         coverImage:coverImage?.url || "",
         email,
         password,
-        username: username.toLowercase()
+        username: username.toLowerCase()
     })
 
-    const createduser= await User.findById(user._id).select(
-        "-password -refreshToken"
+    //find user after creation
+    const createduser= await User.findById(user._id).select( //inside select the fields will not be shown to clint, but saved to database
+        "-password -refreshToken"  //The minus sign (-) before the field names indicates that these fields should not be included in the returned document.
     )
 
     if(!createduser){
