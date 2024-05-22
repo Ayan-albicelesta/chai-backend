@@ -18,7 +18,7 @@ const userSchema=new Schema({
         lowercase:true,
         trim:true
     },
-    fullname:{
+    fullName:{
         type:String,
         required:true,
         trim:true,
@@ -59,7 +59,7 @@ userSchema.methods.isPasswordCorrect=async function(password){
 }
 
 userSchema.methods.generateAccessToken= async function(){
-   return jwt.sign({_id:this._id,email:this.email,username:this.username,fullname:this.fullname},process.env.ACCESS_TOKEN_SECRET,{algorithm:'RS256'},{ expiresIn: process.env.ACCESS_TOKEN_EXPIRY})//default algo-RS256 if not explicitly mentioned
+   return jwt.sign({_id:this._id,email:this.email,username:this.username,fullName:this.fullName},process.env.ACCESS_TOKEN_SECRET,{algorithm:'RS256'},{ expiresIn: process.env.ACCESS_TOKEN_EXPIRY})//default algo-RS256 if not explicitly mentioned
 }
 
 userSchema.methods.generateRefreshToken= async function(){
