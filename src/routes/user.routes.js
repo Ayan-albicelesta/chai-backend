@@ -1,5 +1,6 @@
-import  {resisterUser} from '../controllers/user.controller.js'
+import  {resisterUser, loginuser} from '../controllers/user.controller.js'
 import  {upload} from '../middlewares/multer.middleware.js'
+import { verifyJWT } from '../middlewares/auth.middleware.js';
 
 import { Router } from "express";
 
@@ -18,6 +19,12 @@ userRouter
     }
 ]), resisterUser)
 
+userRouter
+.route("login")
+.post(loginuser)
 
+userRouter
+.route('/logout')
+.post(verifyJWT,logoutUser)
 
 export default userRouter;
