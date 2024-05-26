@@ -1,4 +1,4 @@
-import  {resisterUser, loginuser} from '../controllers/user.controller.js'
+import  {resisterUser, loginuser,logoutUser,refreshAccessToken} from '../controllers/user.controller.js'
 import  {upload} from '../middlewares/multer.middleware.js'
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 
@@ -20,11 +20,15 @@ userRouter
 ]), resisterUser)
 
 userRouter
-.route("login")
+.route("/login")
 .post(loginuser)
 
 userRouter
 .route('/logout')
 .post(verifyJWT,logoutUser)
+
+userRouter
+.route('/refresh-token')
+.post(refreshAccessToken)
 
 export default userRouter;

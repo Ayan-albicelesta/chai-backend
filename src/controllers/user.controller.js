@@ -3,24 +3,31 @@ import { ApiError } from "../utils/ApiError.js";
 import User from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 
-const generateAccessAndRefreshTokens =  async(userId)=>{
+const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId);
-        const accessToken=user.generateAccessToken()
-        const refreshToken=user.generateRefreshToken()//saving the refresh token in db
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
 
-        user.refreshToken=refreshToken
-        await user.save({validateBeforeSave:false})//this will ignore the validation and will just save the data
+        const accessToken =await  user.generateAccessToken();
+        const refreshToken =await user.generateRefreshToken(); //the expiry of accessToken is 1d and refreshToken is 10d, intially while await was not used
+        //before any token, accessToken was printing it's value and refreshToken was returning a promise, after using "await user.generateRefreshToken()" solved the poblem
 
-        return {accessToken,refreshToken}
+        console.log("a ", accessToken, " b ", refreshToken);
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
 
+        return { accessToken, refreshToken };
     } catch (error) {
-        throw new ApiError(500,"something went wrong while generating access and refresh")
+        console.error("Error generating tokens:", error);
+        throw new ApiError(500, "Failed to generate tokens");
     }
-      
-}
+};
+
 
 export const resisterUser= asyncHandler( async(req,res)=>{
     const {fullName,username,email,password} = req.body
@@ -96,11 +103,14 @@ export const resisterUser= asyncHandler( async(req,res)=>{
 export const loginuser = asyncHandler( async(req,res)=>{
     const {email,password,username} = req.body;
 
-    if(!email || !username  && !password){
+    console.log("djnf",req.body);
+    if((!username && !email)  || !password){
         throw new ApiError(400, "email or username is required and password is must required")
     }
 
-    const user= await User.findOne({email, username})
+    // const user= await User.findOne({email, username}) //this will find if both email and username is correct
+
+    const user= await User.findOne({ $or: [ {email}, {username} ]})
 
     if(!user){
         throw new ApiError(400,"User not found")
@@ -112,7 +122,7 @@ export const loginuser = asyncHandler( async(req,res)=>{
         throw new ApiError(400,"Password is incorrect")
     }
 
-    const {accessToken,refreshToken} = await generateAccessAndRefreshTokens(user._id)
+    const {accessToken,refreshToken} = await   generateAccessAndRefreshTokens(user._id)
 
     //here we need to again retrive the data of user as in generateAccessAndRefreshTokens() the user is updated
     const loggedInuser = await User.findById(user._id).select( "-password -refreshToken")
@@ -122,7 +132,7 @@ export const loginuser = asyncHandler( async(req,res)=>{
         secure:true
     }
 
-    return res.status(200).cookie("accesstoken", accessToken,options).cookie("refreshtoken",refreshToken,options)
+    return res.status(200).cookie("accessToken", accessToken,options).cookie("refreshToken",refreshToken,options)
     .json(
         new ApiResponse(201,{loggedInuser,accessToken,refreshToken},"user logged in successfully")//the reason for sending accessToken,refreshToken cause it might be useful for many cases like for monile development where we do not have access to cookie
     )
@@ -142,7 +152,45 @@ export const logoutUser = asyncHandler( async(req,res)=>{
             secure:true
         }
 
-        return res.status(200).clearCookie("accesstoken",options).clearCookie("refreshtoken",options)
+        return res.status(200).clearCookie("accessToken",options).clearCookie("refreshToken",options)
         .json(new ApiResponse(200,{},"user logged out succesfully"))
 })
 
+
+export const refreshAccessToken = asyncHandler( async(req,res)=>{
+     const OldrRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken //this OldrRefreshToken is valid and not expired, just because the access token
+     //is expired and form clint an request is coming to refresh both tokens, 
+
+     if(!OldrRefreshToken){
+         throw new ApiError(400,"Refresh token missing")
+     }
+
+     let payload;
+     try {
+         payload = jwt.verify(OldrRefreshTokenldRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+     } catch (error) {
+         throw new ApiError(401, "Invalid refresh token");
+     }
+
+     const userId=payload._id;
+
+     const user=User.findById(userId).select("-password -refreshToken")
+
+     if(!user){
+        throw new ApiError(400,"User is not verified")
+     }
+
+     if(OldrRefreshToken !== user.refreshToken){//this validation is not reqired altough as if OldrRefreshToken is valid certaily it will match the db's refreshtoken
+        throw new ApiError(400,"Refresh Token did not match")
+     }
+
+     const options={
+        httpOnly:true,
+        secure:true
+     }
+
+     const {accessToken , refreshToken} = await generateAccessAndRefreshTokens(userId)
+
+     return res.send(200).cookie("accessToken", accessToken,options).cookie("refreshToken",refreshToken,options)
+     .json(new ApiResponse(200,{user,accessToken,refreshToken}),"Tokens refreshed")
+})
