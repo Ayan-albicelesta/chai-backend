@@ -4,6 +4,7 @@ import User from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -195,6 +196,15 @@ export const refreshAccessToken = asyncHandler( async(req,res)=>{
      .json(new ApiResponse(200,{user,accessToken,refreshToken}),"Tokens refreshed")
 })
 
+export const getCurrentUser = asyncHandler(async(req, res) => {
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        req.user,
+        "User fetched successfully"
+    ))
+})
 
 
 export const changeCurrentPassword = asyncHandler(async(req, res) => {
@@ -398,9 +408,58 @@ export const  getUserChannelProfile = asyncHandler( async(req,res)=>{
         new ApiResponse(200, channel[0], "User channel fetched successfully")
     )
 })
-
-
-
-
-
-
+ 
+ 
+export  const getWatchHistory=asyncHandler(async(req,res)=>{
+        console.log(req.user._id)//this will give the the id number not like that --> ObjetId("the id nyumber")
+        const user = await User.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(req.user._id)//
+                }
+            },
+            {
+                $lookup: {
+                    from: "videos",
+                    localField: "watchHistory",
+                    foreignField: "_id",
+                    as: "watchHistory",
+                    pipeline: [ //reason behind using sub-pipline is, that watchHistory is an array, there will be many dcouments of videos in "watchHistory" array, so to get user of each "videos" document we have to apply inner pipline, not outside cause if ue have used lookup outside the "user" lookup would have applied on the whole "watchhistory" array but we want to get "owner" of each videos not ht videos array
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "owner",
+                                foreignField: "_id",
+                                as: "owner",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            username: 1,
+                                            fullName: 1,
+                                            avatar: 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            $addFields: {
+                                owner: {//owner was alreay a field in array form, we are overridding that with object as in the pipline we are using addFiled
+                                    $first: "$owner"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]);
+    
+    
+        return res
+                .status(200)
+                .json(
+                    new ApiResponse(200,user[0].watchHistory,"watch history fetched successfully")
+                )
+    
+   
+})
