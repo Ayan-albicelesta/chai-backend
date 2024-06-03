@@ -145,7 +145,14 @@ export const logoutUser = asyncHandler( async(req,res)=>{
         const userId=req.user._id //req.user already set from auth middleware
 
         //to logout we are removing refreshToken from db by making it undefined
-        await User.findByIdAndUpdate(userId,{refreshToken: undefined},{new:true})
+        // await User.findByIdAndUpdate(userId,{refreshToken: undefined},{new:true})
+
+        //a better approach is to use $unset with the value of 1 in the filed ,that i want to delete from db
+        await User.findByIdAndUpdate(userId,
+            { 
+                $unset:{refreshToken:1} //this removes the filed form the docment
+            },
+            {new:true})
 
         //now delete cookie
         const options={

@@ -23,7 +23,7 @@ userRouter.route("/login").post(loginuser)
 
 userRouter.route('/logout').post(verifyJWT,logoutUser)
 
-router.route("/current-user").get(verifyJWT, getCurrentUser)
+userRouter.route("/current-user").get(verifyJWT, getCurrentUser)
 
 userRouter.route("/refresh-token").post(refreshAccessToken)
 
@@ -33,9 +33,9 @@ userRouter.route("/update-account").patch(verifyJWT,updateAccountDetails)
 
 userRouter.route("/avatar").patch(verifyJWT,upload.single("avatar"),updateUserAvatar)
 
-userRouter.route("/coverImage").post(verifyJWT,upload.single("coverImage"),updateUserCoverImage)
+userRouter.route("/coverImage").patch(verifyJWT,upload.single("coverImage"),updateUserCoverImage)
 
-userRouter.route("/c/:username").post(verifyJWT,getUserChannelProfile)
+userRouter.route("/c/:username").get(verifyJWT,getUserChannelProfile)
 
 userRouter.route("/history").get(verifyJWT,getWatchHistory)
 
